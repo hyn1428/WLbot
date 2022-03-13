@@ -1,0 +1,144 @@
+const Discord = require("discord.js");
+const client = new Discord.Client();
+const  google = require('google-it')
+const express = require("express");
+const CambDict = require("camb-dict");
+const fetch = require("node-fetch");
+const dictionary = new CambDict.Dictionary();
+const app = express();
+
+module.exports = {
+  info: {
+    name: "googlesr",
+    usage: "[googlesr]",
+    aliases: ["收"],
+  },
+   run: async function (client, message, args) {
+
+	if (message.author.bot) return;
+  if (message.channel.type == "dm" & !(message.content.toLowerCase().startsWith("!define") || message.content.toLowerCase().startsWith("!autocomplete") || message.content.toLowerCase().startsWith("!image")) && !(message.content.toLowerCase().startsWith("!google")))) {
+        message.react("✅");
+				try {
+					console.log = () => {}
+					message.author.send({embed: {title: "Loading!", description: "_Loading..._", color: 0x00bbbb}}).then(async (msg) => {
+						let results = await google({'query': message.content});
+						let embed = [];
+						for (let i = 0; i < (results.length < 4 ? results.length : 4); i++){
+							embed.push({name: results[i].title, value: `[${(new URL(results[i].link)).hostname}](${results[i].link})\n${results[i].snippet}`})
+						}
+						msg.edit({embed: {
+							color: 0x00bbbb,
+							fields: embed
+						}})
+					})
+				} catch (e) {
+					console.error(e.stack);
+				}
+    return;
+  }
+      if (message.author.bot) return;
+    if (/^!([a-z]+)\s*(.*)\s*$/i.test(message.content)) {
+        let msg = message.content.match(/^!([a-z]+)\s*(.*)\s*$/i);
+        let command = msg[1];
+        let arg = msg[2];
+				let commands = ["google", "autocomplete", "define", "image", "time"]
+        if (!(commands.includes(command))) return
+				message.react("✅");
+				if (command === "time"){
+					let chnl = message.channel.type === "dm" ? message.author : message.channel;
+					var offset = +arg || 0;
+					chnl.send({embed: {
+						title: "Just a sec...",
+						color: 0x00bbbb,
+						description: `:stopwatch: Getting the date!`
+					}}).then((msg) => {
+						let time_int = setInterval(async () => {
+						let hr = new Date( new Date().getTime() + offset * 3600 * 1000).toLocaleString('en-US', { second: "numeric", minute: 'numeric', hour: 'numeric', hour12: true })
+						let dte = new Date( new Date().getTime() + offset * 3600 * 1000).toUTCString().replace( /[0-9:]+ GMT$/, "" ) + hr;
+							try {
+								await msg.edit({embed: {
+									title: "Time",
+									color: 0x00bbbb,
+									description: `:stopwatch: ${dte}`
+								}})
+							} catch(e){
+								console.error(e.stack)
+								clearInterval(time_int)
+							}
+						}, 3000)
+					})
+					return
+				}
+        if (!arg) {
+            respond(message, "Sorry! No can do!", "This command needs an argument!");
+						return;
+        }
+				if (command === "image") {
+					let chnl = message.channel.type === "dm" ? message.author : message.channel;
+					chnl.send({embed: {color: 0x00bbbb, title: "Loading!", description: "_Loading..._"}}).then(async (msg) => {
+						let img = await fetch(`https://apis.explosionscratc.repl.co/image-search?q=${escape(arg)}`)
+						img = await img.json();
+						img = img[0].url;
+						msg.edit({embed: {
+							title: `'${arg.replace(/^(.)/, (i) => i.toUpperCase())}' image:`,
+							image: {
+								url: img,
+							},
+							color: 0x00bbbb,
+						}})
+						return;
+					})
+					return;
+				}
+				if (command === "autocomplete"){
+					auto = require('google-autocomplete');
+					auto.getQuerySuggestions(arg, function(err, suggestions) {
+						respond(message, "Autocompleted!", suggestions.map((i) => i.suggestion).join("\n") || "_No autocompletions_")
+					})
+					return;
+				}
+				if (command === "define"){
+					const { MessageAttachment } = require('discord.js');
+					var word;
+					try {
+						word = await dictionary.meaning(arg.trim().toLowerCase().split(" ")[0]);
+					} catch(e){
+						respond(message, "Word not found!", "That word was not in the dictionary :pensive:");
+						return;
+					}
+					let attachment =  new MessageAttachment(word.audio[0].url, `${arg.toLowerCase().trim()} pronounciation${word.audio[0].url.match(/(....)$/)[1]}`);
+					let msg = {
+							embed: {
+									color: 0x00bbbb,
+									title: word.word,
+									description: `${word.type.toLowerCase().replace(/^./, (i) => i.toUpperCase())} • _${word.pronounciation}_\n\n${word.meaning}\n` + (word.examples.length > 0 ? "_\"" + word.examples[0] + "\"_" : "")
+							},
+							files: [attachment]
+					}
+					if (message.channel.type === "dm"){
+						message.author.send(msg);
+						return;
+					}
+					message.channel.send(msg);					
+					return;
+				}
+				try {
+					message.channel.send({embed: {color: 0x00bbbb, title: "Loading!", description: "_Loading..._"}}).then(async (msg) => {
+						console.log = () => {}
+						let results = await google({'query': arg});
+						let embed = [];
+						for (let i = 0; i < (results.length < 4 ? results.length : 4); i++){
+							embed.push({name: results[i].title, value: `[${(new URL(results[i].link)).hostname}](${results[i].link})\n${results[i].snippet}`})
+						}
+						msg.edit({embed: {
+							color: 0x00bbbb,
+							fields: embed
+						}})
+					});
+				} catch (e) {
+						respond(message, "Error!! :pensive:", "```json\n" + e.stack + "\n ```")
+				}
+    }
+
+    }
+}

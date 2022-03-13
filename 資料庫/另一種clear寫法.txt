@@ -1,0 +1,18 @@
+另一種clear的寫法
+//異步等待
+async execute(message, args){
+        //如果沒有輸入東西 回應
+        if(!args[0]) return message.reply("請輸入要清除的數字");
+        //如果第一個不是數字 回應
+        if(isNaN(args[0])) return message.reply("請勿亂輸入,數字Only");
+        //如果數字大於100 回應
+        if(args[0] > 100) return message.reply("請勿超過100");
+        //如果數字小於1 回應
+        if(args[0] < 1) return message.reply("請勿低於1");
+        
+        //等待呼叫  獲取數字 => 然後批量刪除
+        await message.channel.messages.fetch({limit: args[0]}).then(messages =>{
+              message.channel.bulkDelete(messages);
+        });
+}
+
